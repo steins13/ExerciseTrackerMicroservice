@@ -128,12 +128,11 @@ app.post("/api/users/:_id/exercises", (req, res) => {
 
 app.get("/api/users/:_id/logs", (req, res) => {
 
+  //queries
   let limit = parseInt(req.query.limit)
+  let from = new Date(new Date(req.query.from).toDateString()).getTime()
+  let to = new Date(new Date(req.query.to).toDateString()).getTime()
 
-
-  let from = new Date(req.query.from).getTime()
-  let to = new Date(req.query.from).getTime()
- 
 
 
   Exercise.find({"userId": req.params._id}).limit(limit).select("-_id -userId -username -__v").exec((err, exercises) => {
@@ -143,28 +142,42 @@ app.get("/api/users/:_id/logs", (req, res) => {
     }
 
 
-    //if from is stated
+
 
     let fromExercises = []
     let length = exercises.length
     for (let i = 0; i <= length - 1 ; i++) {
       let dateUnix = new Date(exercises[i].date).getTime()
-      if (parseInt(dateUnix) >= parseInt(from)) {
+      if (dateUnix >= from) {
         let sliced = exercises.slice(i, i+1)
         fromExercises.push(...sliced)
       }
     }
 
-    // //if to is stated
+  
+    let toExercises = []
 
-    // let toExercises = []
-    // for (let i = 0; i <= length - 1 ; i++) {
-    //   let dateUnix = new Date(exercises[i].date).getTime()
-    //   if (parseInt(dateUnix) <= parseInt(to)) {
-    //     let sliced = exercises.slice(i, i+1)
-    //     toExercises.push(...sliced)
-    //   }
-    // }
+    if (req.query.from === undefined) {
+      for (let i = 0; i <= length - 1 ; i++) {
+        let dateUnix = new Date(exercises[i].date).getTime()
+        if (dateUnix <= to) {
+          let sliced = exercises.slice(i, i+1)
+          toExercises.push(...sliced)
+        }
+      }
+    } else if (req.query.from !== undefined) {
+      let fromLength = fromExercises.length
+      for (let i = 0; i <= fromLength - 1 ; i++) {
+        let dateUnix = new Date(fromExercises[i].date).getTime()
+        if (dateUnix <= to) {
+          let sliced = fromExercises.slice(i, i+1)
+          toExercises.push(...sliced)
+        }
+      }
+    }
+
+
+
 
 
     User.findOne({"_id": req.params._id}).select("-__v").exec((err, user) => {
@@ -172,12 +185,36 @@ app.get("/api/users/:_id/logs", (req, res) => {
         return console.log(err)
       }
 
-      res.json({
-        "id": user._id,
-        "username": user.username,
-        "count": exercises.length,
-        "log": exercises
-      })
+
+      if (req.query.from !== undefined && req.query.to !== undefined) {
+        res.json({
+          "id": user._id,
+          "username": user.username,
+          "count": toExercises.length,
+          "log": toExercises
+        })
+      } else if (req.query.from !== undefined) {
+        res.json({
+          "id": user._id,
+          "username": user.username,
+          "count": fromExercises.length,
+          "log": fromExercises
+        })
+      } else if (req.query.to !== undefined) {
+        res.json({
+          "id": user._id,
+          "username": user.username,
+          "count": toExercises.length,
+          "log": toExercises
+        })
+      } else {
+        res.json({
+          "id": user._id,
+          "username": user.username,
+          "count": exercises.length,
+          "log": exercises
+        })
+      }
 
     })
 
